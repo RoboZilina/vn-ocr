@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VN OCR — Master Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta http-equiv="Content-Security-Policy"
+        content="connect-src 'self' https://cdn.jsdelivr.net https://fastly.jsdelivr.net data:;">
+    <link rel="icon"
+        href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAQAAACENnwnAAAAD0lEQVR42mNkYGBg+A8AAQUBAUtW7xkAAAAASUVORK5CYII=">
+</head>
+
+<body>
+    <div class="dashboard-root">
+        <!-- GLOBAL CONTROL BAR -->
+        <header class="app-header">
+            <!-- Phase 7.1: Remaining hidden controls -->
+            <div style="display:none">
+                <button id="theme-toggle"></button>
+                <input type="checkbox" id="auto-capture-toggle">
+                <button id="install-btn"></button>
+                <button id="help-btn"></button>
+            </div>
+            <div class="menu-anchor">
+                <button id="menu-btn" class="menu-btn" aria-label="Menu">☰</button>
+            </div>
+            <div class="header-left">
+                <div class="brand">VN OCR <span class="badge public">Public</span></div>
+                <div class="divider"></div>
+                <div class="controls-group">
+                    <select id="engine-selector" class="ui-select">
+                        <option value="adaptive" selected>Adaptive</option>
+                        <option value="multi">Multi-Pass</option>
+                        <option value="last_resort">Last Resort</option>
+                        <option value="binarize">Contrast</option>
+                        <option value="grayscale">Grayscale</option>
+                        <option value="raw">Raw</option>
+                    </select>
+                    <button id="panic-btn" class="panic-btn" title="Panic Mode: Max Enhance!">🚨</button>
+                    <select id="lang-selector" class="ui-select">
+                        <option value="jpn">日本語 (jpn)</option>
+                        <option value="jpn_best" selected>日本語 (jpn_best)</option>
+                        <option value="jpn_fast">日本語 (jpn_fast)</option>
+                        <option value="jpn_vert">縦書き (jpn_vert)</option>
+                    </select>
+                    <select id="tts-voice-select" class="ui-select" title="TTS Voice" style="max-width: 150px;">
+                        <option value="">🔇 TTS Off</option>
+                    </select>
+                    <div class="divider"></div>
+                    <div class="slider-group" title="Tesseract Upscaling Factor">
+                        <label>Scaling: <span id="upscale-val">2.0</span>x</label>
+                        <input type="range" id="upscale-slider" min="1" max="4" step="0.5" value="2.0">
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <div id="ocr-status" class="status-pill loading">🔴 Loading...</div>
+                <button id="select-window-btn" class="btn primary">Select Window Source</button>
+            </div>
+        </header>
+
+        <main class="app-main">
+            <!-- MAIN CONTENT AREA (VIDEO + LATEST TEXT) -->
+            <section class="main-workspace">
+                <div class="video-stage">
+                    <div id="selection-hint" class="selection-hint">🖱️ Click and drag on video to select text area
+                    </div>
+                    <div class="video-anchor">
+                        <video id="vn-video" autoplay muted playsinline></video>
+                        <canvas id="selection-overlay"></canvas>
+                        <div id="placeholder" class="placeholder">
+                            <div class="icon-glow">🎮</div>
+                            <p>Awaiting Visual Novel Stream</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="transcription-tray">
+                    <div class="tray-actions">
+                        <div class="tray-buttons-row">
+                            <button id="refresh-ocr-btn" class="btn action-btn" disabled>🔄 RE-CAPTURE</button>
+                            <button id="auto-capture-btn" class="btn auto-btn"
+                                onclick="document.getElementById('auto-capture-toggle').click();">
+                                <span class="auto-btn-text"></span>
+                            </button>
+                        </div>
+                        <img id="debug-crop-img" class="debug-img">
+                    </div>
+                    <div class="latest-line-window">
+                        <p id="latest-text" class="latest-text-content" lang="ja">Waiting for capture...</p>
+                        <button id="speak-latest-btn" class="speak-main-btn" title="Speak Latest Line">🔊</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CONTEXT SIDEBAR -->
+            <aside class="history-sidebar">
+                <div class="sidebar-header">
+                    <h3>History Log</h3>
+                    <button id="clear-history-btn" class="icon-btn" title="Clear All">🗑️</button>
+                </div>
+                <div id="history-content" class="history-scroll"></div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- STUDIO GUIDE MODAL -->
+    <div id="help-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" id="help-close">&times;</button>
+            <div class="modal-header">
+                <h2>🏮 Studio Guide</h2>
+                <p>Everything you need to get crisp reads from your visual novel</p>
+            </div>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <h3>🚀 Quick Start — 30-Second Setup</h3>
+                    <ol style="padding-left: 18px; line-height: 1.6; margin-bottom: 12px;">
+                        <li>Click <strong>Select Window Source</strong> and choose your VN window.</li>
+                        <li>Drag a rectangle around the <strong>dialogue text area</strong> in the mirrored preview.
+                        </li>
+                        <li>OCR runs instantly — text appears below and is copied to clipboard.</li>
+                    </ol>
+                    <p><strong>Essential Controls:</strong></p>
+                    <ul style="padding-left: 18px; line-height: 1.5; margin-bottom: 12px;">
+                        <li><strong>🔄 RE-CAPTURE:</strong> Manually re-scan the same region anytime.</li>
+                        <li><strong>AUTO Button:</strong> Enable hands-free continuous reading (next to RE-CAPTURE).
+                        </li>
+                        <li><strong>Debug Thumbnail:</strong> Shows the exact capture sent to OCR — use it to check
+                            scaling and clarity.</li>
+                        <li><strong>Scaling & Engine:</strong> Adjust in the header for best results on small or complex
+                            fonts.</li>
+                        <li><strong>TTS & History:</strong> Hear lines spoken aloud (🔊) or browse the sidebar for past
+                            logs.</li>
+                    </ul>
+                    <p style="font-size: 12px; opacity: 0.8; border-top: 1px solid var(--border); padding-top: 8px;">
+                        <em>The <strong>OCR Engine</strong> reads the text. The <strong>Image Processing Mode</strong>
+                            prepares the image for the engine. You can mix and match them depending on the VN.</em>
+                    </p>
+                </div>
+                <div class="guide-card">
+                    <h3>🔮 Image Processing Modes</h3>
+                    <p>These modes control how the image is prepared for the OCR engine (they are NOT the OCR models):
+                    </p>
+                    <ul>
+                        <li><strong>Adaptive:</strong> Best all-rounder. Converts to black/white automatically. Start
+                            here.</li>
+                        <li><strong>Multi-Pass 🔥:</strong> Runs 5 different preprocessing combos and picks the winner
+                            by confidence + Japanese character density. Slower but smarter.</li>
+                        <li><strong>Last Resort 🚨:</strong> Nuclear option — 7 passes. Isolates the textbox,
+                            reconstructs character strokes, then tries every upscale &amp; binarize combination. Use
+                            when nothing else works.</li>
+                        <li><strong>Contrast ⬛:</strong> Hard black/white. Best for flat, clean backgrounds.</li>
+                        <li><strong>Grayscale 🔲:</strong> Preserves tonal detail. Good for colorful or gradient
+                            backgrounds.</li>
+                        <li><strong>Raw 📷:</strong> No processing. Use to test or for very clean high-res text.</li>
+                    </ul>
+                </div>
+                <div class="guide-card">
+                    <h3>🔍 Scaling &amp; OCR Engine</h3>
+                    <p>Adjust the <strong>Scaling</strong> slider to upscale the capture before OCR:</p>
+                    <ul>
+                        <li><strong>1x – 2x:</strong> Good for standard 1080p games with clear, large fonts.</li>
+                        <li><strong>3x – 4x:</strong> Use for 720p games or tiny packed dialogue boxes.</li>
+                    </ul>
+                    <p style="margin-top:10px;">Choose your <strong>OCR Engine (Language Model)</strong> for accuracy
+                        vs. speed:</p>
+                    <ul>
+                        <li><strong>jpn_best:</strong> Highest accuracy. Larger download, slower first load.</li>
+                        <li><strong>jpn:</strong> Balanced. Good default if jpn_best feels slow.</li>
+                        <li><strong>jpn_fast:</strong> Fastest load. Slightly lower accuracy.</li>
+                        <li><strong>jpn_vert 縦書き:</strong> For traditional top-to-bottom vertical text layouts.</li>
+                    </ul>
+                </div>
+                <div class="guide-card">
+                    <h3>👁️ Autonomous Eye (Auto-Capture)</h3>
+                    <p>Use the <strong>AUTO</strong> button next to <strong>RE-CAPTURE</strong> to enable hands-free
+                        OCR.</p>
+                    <ul style="margin-top:5px; margin-bottom:10px;">
+                        <li><strong>AUTO: ON</strong> — Indicator turns green</li>
+                        <li><strong>AUTO: OFF</strong> — Indicator turns gray</li>
+                        <li>Clicking toggles automation instantly</li>
+                        <li>Reflects the global state also found in the side menu</li>
+                    </ul>
+                    <p><strong>How it works:</strong></p>
+                    <ul>
+                        <li>Scans the selected region every <strong>500ms</strong> for pixel-level changes.</li>
+                        <li>Waits <strong>800ms</strong> after stabilization to avoid mid-transition frames.</li>
+                        <li>Works best with a tight capture region around the dialogue text.</li>
+                    </ul>
+                </div>
+                <div class="guide-card">
+                    <h3>🔊 Text-to-Speech</h3>
+                    <ul>
+                        <li>Select a Japanese voice from the <strong>TTS Voice</strong> dropdown in the header.</li>
+                        <li>Click <strong>🔊</strong> next to the latest line to hear it spoken aloud.</li>
+                        <li>Every history entry also has its own 🔊 button for replaying past lines.</li>
+                        <li>Select <strong>🔇 TTS Off</strong> to disable speech entirely.</li>
+                    </ul>
+                </div>
+                <div class="guide-card">
+                    <h3>💡 Pro Tips</h3>
+                    <ul>
+                        <li><strong>🚨 Panic Button:</strong> One click instantly switches to Last Resort mode and
+                            re-fires OCR — no menu diving needed.</li>
+                        <li><strong>Clipboard:</strong> Every successful OCR result is auto-copied to your clipboard.
+                        </li>
+                        <li><strong>History:</strong> The sidebar logs up to 100 lines, restored on next session. Use 📋
+                            to copy any past line.</li>
+                        <li><strong>Zoom in:</strong> If the debug thumbnail looks blurry or tiny — raise the Scaling
+                            slider before re-capturing.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="side-menu" class="side-menu">
+        <div class="menu-header">
+            <h3>Site Menu</h3>
+        </div>
+        <button id="menu-theme" class="menu-item-btn" data-action="theme">Toggle Theme</button>
+        <button id="menu-auto" class="menu-item-btn" data-action="auto">Toggle Auto-Capture</button>
+        <button id="menu-install" class="menu-item-btn" data-action="install">Install App</button>
+        <button id="menu-history" class="menu-item-btn" data-action="history">Show/Hide History</button>
+        <button id="menu-guide" class="menu-item-btn" data-action="guide">Studio Guide</button>
+    </div>
+    <div id="menu-backdrop" class="menu-backdrop"></div>
+
+    <!-- Scripts at the end of body -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').catch(() => { });
+            });
+        }
+    </script>
+</body>
+
+</html>
