@@ -45,15 +45,15 @@ if (themeToggle) {
 let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
+    e.preventDefault();
+    deferredPrompt = e;
 });
 
 document.getElementById('install-btn')?.addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  await deferredPrompt.userChoice;
-  deferredPrompt = null;
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
 });
 
 
@@ -65,9 +65,9 @@ let videoStream = null;
 let ocrWorker = null;
 let isOcrReady = false;
 let isProcessing = false;
-let selectionRect = null; 
-let currentModelAlias = null; 
-let loadedModels = new Set(); 
+let selectionRect = null;
+let currentModelAlias = null;
+let loadedModels = new Set();
 
 // Smart Scout: 32x32 Comparison Logic
 const scoutCanvas = document.createElement('canvas');
@@ -138,8 +138,8 @@ async function ensureModelLoaded(requestedAlias) {
         currentModelAlias = requestedAlias;
         isOcrReady = true;
         setOCRStatus('ready', '🟢 OCR Ready');
-    } catch (e) { 
-        setOCRStatus('error', '🔴 Load Error'); 
+    } catch (e) {
+        setOCRStatus('error', '🔴 Load Error');
         if (requestedAlias !== 'jpn') await ensureModelLoaded('jpn');
     }
 }
@@ -211,7 +211,7 @@ async function startCapture() {
         document.getElementById('placeholder').style.display = 'none';
         const hint = document.getElementById('selection-hint');
         if (hint) hint.classList.add('visible');
-    } catch (err) {}
+    } catch (err) { }
 }
 
 function stopCapture() {
@@ -257,17 +257,17 @@ if (selectionOverlay) {
         isSelecting = false; const pos = getMousePos(e);
         currentX = pos.x; currentY = pos.y;
         const w = selectionOverlay.width, h = selectionOverlay.height;
-        const finalRect = { 
-            x: Math.min(startX, currentX) / w, 
-            y: Math.min(startY, currentY) / h, 
-            width: Math.abs(currentX - startX) / w, 
-            height: Math.abs(currentY - startY) / h 
+        const finalRect = {
+            x: Math.min(startX, currentX) / w,
+            y: Math.min(startY, currentY) / h,
+            width: Math.abs(currentX - startX) / w,
+            height: Math.abs(currentY - startY) / h
         };
         const hint = document.getElementById('selection-hint');
-        if (finalRect.width > 0.005) { 
+        if (finalRect.width > 0.005) {
             selectionRect = finalRect;
-            refreshOcrBtn.disabled = false; 
-            captureFrame(selectionRect); 
+            refreshOcrBtn.disabled = false;
+            captureFrame(selectionRect);
             if (hint) hint.classList.remove('visible');
         } else {
             selectionRect = null;
@@ -284,12 +284,12 @@ if (selectionOverlay) {
         const w = isSelecting ? Math.abs(currentX - startX) : selectionRect.width * canvasW;
         const h = isSelecting ? Math.abs(currentY - startY) : selectionRect.height * canvasH;
         if (isSelecting) { ctx.fillStyle = 'rgba(16, 185, 129, 0.15)'; ctx.fillRect(x, y, w, h); }
-        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3; ctx.strokeRect(x, y, w, h); 
+        ctx.strokeStyle = '#10b981'; ctx.lineWidth = 3; ctx.strokeRect(x, y, w, h);
         ctx.fillStyle = '#10b981'; const s = 10;
         ctx.fillRect(x, y, s, 3); ctx.fillRect(x, y, 3, s);
-        ctx.fillRect(x+w-s, y, s, 3); ctx.fillRect(x+w-3, y, 3, s);
-        ctx.fillRect(x, y+h-3, s, 3); ctx.fillRect(x, y+h-s, 3, s);
-        ctx.fillRect(x+w-s, y+h-3, s, 3); ctx.fillRect(x+w-3, y+h-s, 3, s);
+        ctx.fillRect(x + w - s, y, s, 3); ctx.fillRect(x + w - 3, y, 3, s);
+        ctx.fillRect(x, y + h - 3, s, 3); ctx.fillRect(x, y + h - s, 3, s);
+        ctx.fillRect(x + w - s, y + h - 3, s, 3); ctx.fillRect(x + w - 3, y + h - s, 3, s);
     }
 }
 
@@ -305,7 +305,7 @@ function checkAutoCapture() {
     let actualWidth, actualHeight, offsetX = 0, offsetY = 0;
     if (vAspect > cAspect) { actualWidth = cWidth; actualHeight = cWidth / vAspect; offsetY = (cHeight - actualHeight) / 2; }
     else { actualHeight = cHeight; actualWidth = cHeight * vAspect; offsetX = (cWidth - actualWidth) / 2; }
-    
+
     // Denormalize selection for current canvas state
     const rectX = selectionRect.x * cWidth, rectY = selectionRect.y * cHeight;
     const rectW = selectionRect.width * cWidth, rectH = selectionRect.height * cHeight;
@@ -370,7 +370,7 @@ function scaleCanvasToThumb(c, maxW, maxH) {
 async function captureFrame(rect) {
     if (!vnVideo || !vnVideo.videoWidth || !rect || isProcessing) return;
     isProcessing = true;
-    
+
     const vWidth = vnVideo.videoWidth, vHeight = vnVideo.videoHeight;
     const cWidth = selectionOverlay.width, cHeight = selectionOverlay.height;
     const vAspect = vWidth / vHeight, cAspect = cWidth / cHeight;
@@ -445,20 +445,53 @@ async function captureFrame(rect) {
 
 function applyPreprocessing(canvas, mode) {
     if (mode === 'raw') return canvas;
+    canvas = lr_upscale(canvas, 2);
     // Standard modes no longer upscale internally (PATCH 2)
     const res = document.createElement('canvas'); res.width = canvas.width; res.height = canvas.height;
     const ctx = res.getContext('2d'); ctx.drawImage(canvas, 0, 0);
     const id = ctx.getImageData(0, 0, res.width, res.height); const d = id.data;
-    if (mode === 'binarize' || mode === 'adaptive') {
+    if (mode === 'binarize') {
         for (let i = 0; i < d.length; i += 4) {
-            const v = (d[i] + d[i+1] + d[i+2]) / 3;
-            const b = v < 128 ? 0 : 255;
-            d[i] = d[i+1] = d[i+2] = b;
+            const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            const contrasted = 128 + (v - 128) * 1.35;
+            const out = contrasted < 0 ? 0 : (contrasted > 255 ? 255 : contrasted);
+            d[i] = d[i + 1] = d[i + 2] = out;
+        }
+    } else if (mode === 'adaptive') {
+        const w = res.width, h = res.height;
+        const integral = new Float64Array(w * h);
+        const luma = new Float64Array(w * h);
+        for (let y = 0; y < h; y++) {
+            let rowSum = 0;
+            for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4;
+                const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                luma[y * w + x] = v;
+                rowSum += v;
+                integral[y * w + x] = (y === 0 ? 0 : integral[(y - 1) * w + x]) + rowSum;
+            }
+        }
+        const s = Math.floor(w / 8);
+        const s2 = Math.floor(s / 2);
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const x1 = Math.max(0, x - s2), x2 = Math.min(w - 1, x + s2);
+                const y1 = Math.max(0, y - s2), y2 = Math.min(h - 1, y + s2);
+                const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+                let sum = integral[y2 * w + x2];
+                if (x1 > 0) sum -= integral[y2 * w + x1 - 1];
+                if (y1 > 0) sum -= integral[(y1 - 1) * w + x2];
+                if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * w + x1 - 1];
+                const i = (y * w + x) * 4;
+                d[i] = d[i + 1] = d[i + 2] = (luma[y * w + x] * count < sum * 0.85) ? 0 : 255;
+            }
         }
     } else if (mode === 'grayscale') {
         for (let i = 0; i < d.length; i += 4) {
-            const v = (d[i] + d[i+1] + d[i+2]) / 3;
-            d[i] = d[i+1] = d[i+2] = v;
+            const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+            const contrasted = 128 + (v - 128) * 1.15;
+            const out = contrasted < 0 ? 0 : (contrasted > 255 ? 255 : contrasted);
+            d[i] = d[i + 1] = d[i + 2] = out;
         }
     }
     ctx.putImageData(id, 0, 0);
@@ -468,21 +501,32 @@ function applyPreprocessing(canvas, mode) {
 // Enhancements
 function lr_upscale(canvas, f) {
     const res = document.createElement('canvas'); res.width = canvas.width * f; res.height = canvas.height * f;
-    const ctx = res.getContext('2d'); 
+    const ctx = res.getContext('2d');
     ctx.imageSmoothingEnabled = false; // PATCH 2 (Fix lr_upscale)
     ctx.drawImage(canvas, 0, 0, res.width, res.height); return res;
 }
 
+function lr_addPadding(canvas, pad) {
+    const res = document.createElement('canvas');
+    res.width = canvas.width;
+    res.height = canvas.height + pad * 2;
+    const ctx = res.getContext('2d');
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, res.width, res.height);
+    ctx.drawImage(canvas, 0, pad);
+    return res;
+}
+
 function lr_binarize(canvas) {
     const ctx = canvas.getContext('2d'); const w = canvas.width, h = canvas.height; const id = ctx.getImageData(0, 0, w, h); const d = id.data;
-    for (let i = 0; i < d.length; i += 4) { const v = (d[i] + d[i+1] + d[i+2]) / 3; const b = v < 128 ? 0 : 255; d[i] = d[i+1] = d[i+2] = b; }
+    for (let i = 0; i < d.length; i += 4) { const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; const b = v < 128 ? 0 : 255; d[i] = d[i + 1] = d[i + 2] = b; }
     const res = document.createElement('canvas'); res.width = w; res.height = h; res.getContext('2d').putImageData(id, 0, 0); return res;
 }
 
 function lr_isolateTextbox(canvas) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
-    if (h < 100) return canvas; 
+    if (h < 100) return canvas;
     const id = ctx.getImageData(0, 0, w, h);
     const d = id.data;
     const projection = new Float32Array(h);
@@ -490,19 +534,22 @@ function lr_isolateTextbox(canvas) {
         let sum = 0;
         for (let x = 1; x < w - 1; x++) {
             const idx = (y * w + x) * 4;
-            sum += Math.abs(d[idx] - d[idx+4]) + Math.abs(d[idx] - d[idx+w*4]);
+            sum += Math.abs(d[idx] - d[idx + 4]) + Math.abs(d[idx] - d[idx + w * 4]);
         }
         projection[y] = sum / w;
     }
     let bestBand = { start: 0, end: h, avg: 0 };
     const bandH = Math.floor(h * 0.25);
     for (let y = 0; y < h - bandH; y++) {
-        let sum = 0; for (let i = 0; i < bandH; i++) sum += projection[y+i];
+        let sum = 0; for (let i = 0; i < bandH; i++) sum += projection[y + i];
         const avg = sum / bandH;
         if (avg > bestBand.avg) bestBand = { start: y, end: y + bandH, avg: avg };
     }
     if (bestBand.avg < 10) return canvas;
-    const start = Math.max(0, bestBand.start - 20), end = Math.min(h, bestBand.end + 20);
+    const padTop = 20;
+    const padBottom = 80;
+    const start = Math.max(0, bestBand.start - padTop);
+    const end = Math.min(h, bestBand.end + padBottom);
     const res = document.createElement('canvas'); res.width = w; res.height = end - start;
     res.getContext('2d').drawImage(canvas, 0, start, w, end - start, 0, 0, w, end - start);
     return res;
@@ -520,8 +567,8 @@ function lr_reconstructStrokes(canvas) {
             let gx = 0, gy = 0;
             for (let i = -1; i <= 1; i++) {
                 for (let j = -1; j <= 1; j++) {
-                    const v = (d[((y+i)*w+(x+j))*4]+d[((y+i)*w+(x+j))*4+1]+d[((y+i)*w+(x+j))*4+2])/3;
-                    gx += v * kx[(i+1)*3+(j+1)]; gy += v * ky[(i+1)*3+(j+1)];
+                    const v = (d[((y + i) * w + (x + j)) * 4] + d[((y + i) * w + (x + j)) * 4 + 1] + d[((y + i) * w + (x + j)) * 4 + 2]) / 3;
+                    gx += v * kx[(i + 1) * 3 + (j + 1)]; gy += v * ky[(i + 1) * 3 + (j + 1)];
                 }
             }
             edges[y * w + x] = Math.sqrt(gx * gx + gy * gy);
@@ -542,10 +589,10 @@ function lr_reconstructStrokes(canvas) {
     }
     const out = ctx.createImageData(w, h);
     for (let i = 0; i < w * h; i++) {
-        const g = (d[i*4]+d[i*4+1]+d[i*4+2])/3;
+        const g = (d[i * 4] + d[i * 4 + 1] + d[i * 4 + 2]) / 3;
         const v = Math.min(255, (g * 0.6) + (dilated[i] * 0.4));
-        out.data[i*4] = out.data[i*4+1] = out.data[i*4+2] = v;
-        out.data[i*4+3] = 255;
+        out.data[i * 4] = out.data[i * 4 + 1] = out.data[i * 4 + 2] = v;
+        out.data[i * 4 + 3] = 255;
     }
     const res = document.createElement('canvas'); res.width = w; res.height = h;
     res.getContext('2d').putImageData(out, 0, 0);
@@ -555,29 +602,31 @@ function lr_reconstructStrokes(canvas) {
 function lr_sharpen(canvas) {
     const ctx = canvas.getContext('2d'); const w = canvas.width, h = canvas.height; const id = ctx.getImageData(0, 0, w, h); const d = id.data;
     const output = ctx.createImageData(w, h); const od = output.data; const weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-    for (let y = 1; y < h - 1; y++) { for (let x = 1; x < w - 1; x++) { for (let c = 0; c < 3; c++) { let sum = 0; for (let ky = -1; ky <= 1; ky++) { for (let kx = -1; kx <= 1; kx++) { sum += d[((y+ky)*w+(x+kx))*4+c]*weights[(ky+1)*3+(kx+1)]; } } od[(y*w+x)*4+c]=Math.min(255,Math.max(0,sum)); } od[(y*w+x)*4+3]=255; } }
+    for (let y = 1; y < h - 1; y++) { for (let x = 1; x < w - 1; x++) { for (let c = 0; c < 3; c++) { let sum = 0; for (let ky = -1; ky <= 1; ky++) { for (let kx = -1; kx <= 1; kx++) { sum += d[((y + ky) * w + (x + kx)) * 4 + c] * weights[(ky + 1) * 3 + (kx + 1)]; } } od[(y * w + x) * 4 + c] = Math.min(255, Math.max(0, sum)); } od[(y * w + x) * 4 + 3] = 255; } }
     const res = document.createElement('canvas'); res.width = w; res.height = h; res.getContext('2d').putImageData(output, 0, 0); return res;
 }
 
 // Pipelines
 async function runLastResortOCR(cropCanvas) {
-    setOCRStatus('processing', '🚨 Isolating Textbox...');
+    setOCRStatus('processing', '⚡ Isolating Textbox...');
     const textbox = lr_isolateTextbox(cropCanvas);
-    setOCRStatus('processing', '🚨 Reconstructing Strokes...');
-    const base = lr_reconstructStrokes(textbox); // base canvas for debug (PATCH 3)
+    const padded = lr_addPadding(textbox, 1);
+    setOCRStatus('processing', '⚡ Reconstructing Strokes...');
+    const base = lr_reconstructStrokes(lr_upscale(padded, 2));
 
     const passes = [];
     const run = async (c, lbl) => { setOCRStatus('processing', lbl); const r = await runTesseract(c); r.canvas = c; passes.push(r); };
-    await run(base, '🚨 Last Resort (1/7)...');
-    await run(lr_upscale(base, 3), '🚨 Last Resort (2/7)...');
-    await run(lr_upscale(lr_binarize(base), 2), '🚨 Last Resort (3/7)...');
-    await run(lr_upscale(lr_binarize(lr_isolateTextbox(cropCanvas)), 3), '🚨 Last Resort (4/7)...');
-    await run(lr_binarize(base), '🚨 Last Resort (5/7)...');
-    await run(lr_upscale(base, 2), '🚨 Last Resort (6/7)...');
-    await run(lr_upscale(lr_binarize(base), 3), '🚨 Last Resort (7/7)...');
-    
+
+    await run(base, '⚡ Last Resort (1/7)...');
+    await run(lr_upscale(base, 2), '⚡ Last Resort (2/7)...');
+    await run(applyPreprocessing(base, 'grayscale'), '⚡ Last Resort (3/7)...');
+    await run(applyPreprocessing(lr_upscale(lr_isolateTextbox(cropCanvas), 2), 'adaptive'), '⚡ Last Resort (4/7)...');
+    await run(applyPreprocessing(base, 'adaptive'), '⚡ Last Resort (5/7)...');
+    await run(applyPreprocessing(base, 'binarize'), '⚡ Last Resort (6/7)...');
+    await run(applyPreprocessing(lr_upscale(base, 2), 'adaptive'), '⚡ Last Resort (7/7)...');
+
     const result = fuseOCRResults(passes);
-    result.canvas = base; // PATCH 3: Debug preview shows base reconstructed stage
+    result.canvas = base;
     return result;
 }
 
@@ -586,12 +635,10 @@ async function runMultiPassOCR(crop) {
     const run = async (c, lbl) => { setOCRStatus('processing', lbl); const r = await runTesseract(c); r.canvas = c; passes.push(r); };
     await run(crop, '🔥 Multi-Pass (1/5)...');
     await run(lr_upscale(crop, 2), '🔥 Multi-Pass (2/5)...');
-    await run(lr_upscale(lr_binarize(crop), 2), '🔥 Multi-Pass (3/5)...');
-    await run(lr_binarize(crop), '🔥 Multi-Pass (4/5)...');
-    await run(lr_upscale(lr_binarize(crop), 3), '🔥 Multi-Pass (5/5)...');
-    
+    await run(applyPreprocessing(lr_upscale(crop, 2), 'grayscale'), '🔥 Multi-Pass (3/5)...');
+    await run(applyPreprocessing(lr_upscale(crop, 2), 'binarize'), '🔥 Multi-Pass (4/5)...');
+    await run(applyPreprocessing(lr_upscale(crop, 2), 'adaptive'), '🔥 Multi-Pass (5/5)...');
     const result = fuseOCRResults(passes);
-    // Note: thumbnail handling moved to captureFrame
     return result;
 }
 
@@ -619,46 +666,46 @@ async function runTesseract(canvas) {
 function addOCRResultToUI(text) {
     const clean = text.replace(/\s+/g, '').trim(); if (!clean) return;
     if (latestText) latestText.textContent = clean;
-    
-    const item = document.createElement('p'); 
-    item.className = 'history-item'; 
+
+    const item = document.createElement('p');
+    item.className = 'history-item';
     item.setAttribute('lang', 'ja');
-    
+
     const span = document.createElement('span');
     span.textContent = clean;
     item.appendChild(span);
-    
+
     const btnRow = document.createElement('div');
     btnRow.className = 'item-btns';
-    
+
     const speakBtn = document.createElement('button');
     speakBtn.setAttribute('data-action', 'speak');
     speakBtn.textContent = '🔊';
     speakBtn.ariaLabel = "Speak line";
-    
+
     const copyBtn = document.createElement('button');
     copyBtn.setAttribute('data-action', 'copy');
     copyBtn.textContent = '📋';
     copyBtn.ariaLabel = "Copy line";
-    
+
     btnRow.append(speakBtn, copyBtn);
     item.appendChild(btnRow);
 
     if (historyContent) {
         historyContent.prepend(item);
         while (historyContent.children.length > 100) historyContent.removeChild(historyContent.lastChild);
-        
+
         const items = Array.from(historyContent.querySelectorAll('span')).map(s => s.textContent);
         localStorage.setItem('vn-ocr-public-history-v2', JSON.stringify(items));
     }
-    navigator.clipboard.writeText(clean).catch(() => {});
+    navigator.clipboard.writeText(clean).catch(() => { });
 }
 
 if (clearHistoryBtn) {
-    clearHistoryBtn.onclick = () => { 
-        if (historyContent) historyContent.innerHTML = ''; 
+    clearHistoryBtn.onclick = () => {
+        if (historyContent) historyContent.innerHTML = '';
         if (latestText) latestText.textContent = 'Waiting for capture...';
-        localStorage.removeItem('vn-ocr-public-history-v2'); 
+        localStorage.removeItem('vn-ocr-public-history-v2');
         localStorage.removeItem('vn-ocr-public-history');
     };
 }
@@ -675,17 +722,17 @@ function initHelpModal() {
 }
 document.addEventListener('DOMContentLoaded', () => {
     initHelpModal();
-    
+
     const autoState = settings.get('auto-capture', true);
     if (autoToggle) {
         autoToggle.checked = autoState;
         autoToggle.onchange();
     }
-    
+
     const storedTheme = settings.get('theme', null);
     const systemTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     updateThemeUI(storedTheme || systemTheme);
-    
+
     if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
         const installBtn = document.getElementById('install-btn');
         if (installBtn) installBtn.style.display = 'none';
@@ -708,7 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.removeItem('vn-ocr-public-history');
             }
         }
-        
+
         if (historyContent.firstChild && latestText) {
             const entry = historyContent.firstElementChild;
             const span = entry?.querySelector('span');
@@ -721,7 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* PHASE 6 — HAMBURGER MENU MIRROR (APPEND)   */
 /* ========================================== */
 
-(function() {
+(function () {
     const menuBtn = document.getElementById('menu-btn');
     const sideMenu = document.getElementById('side-menu');
     const menuBackdrop = document.getElementById('menu-backdrop');
@@ -749,25 +796,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Mirror actions: trigger existing controls via .click()
-    if (menuTheme) menuTheme.onclick = () => { 
+    if (menuTheme) menuTheme.onclick = () => {
         const tt = document.getElementById('theme-toggle');
-        if (tt) tt.click(); 
-        closeMenu(); 
+        if (tt) tt.click();
+        closeMenu();
     };
-    if (menuAuto) menuAuto.onclick = () => { 
+    if (menuAuto) menuAuto.onclick = () => {
         const at = document.getElementById('auto-capture-toggle');
-        if (at) at.click(); 
-        closeMenu(); 
+        if (at) at.click();
+        closeMenu();
     };
-    if (menuInstall) menuInstall.onclick = () => { 
+    if (menuInstall) menuInstall.onclick = () => {
         const it = document.getElementById('install-btn');
-        if (it) it.click(); 
-        closeMenu(); 
+        if (it) it.click();
+        closeMenu();
     };
-    if (menuGuide) menuGuide.onclick = () => { 
+    if (menuGuide) menuGuide.onclick = () => {
         const hb = document.getElementById('help-btn');
-        if (hb) hb.click(); 
-        closeMenu(); 
+        if (hb) hb.click();
+        closeMenu();
     };
     if (menuHistory) menuHistory.onclick = () => {
         const root = document.querySelector('.dashboard-root');
