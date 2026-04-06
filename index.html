@@ -7,7 +7,7 @@
     <title>VN OCR — Master Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1.0.0">
     <link rel="manifest" href="manifest.json">
     <meta http-equiv="Content-Security-Policy"
         content="connect-src 'self' https://cdn.jsdelivr.net https://fastly.jsdelivr.net data:;">
@@ -109,12 +109,12 @@
         </main>
     </div>
 
-    <!-- STUDIO GUIDE MODAL -->
+    <!-- USER GUIDE MODAL -->
     <div id="help-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" id="help-close">&times;</button>
             <div class="modal-header">
-                <h2>🏮 Studio Guide</h2>
+                <h2>User Guide</h2>
                 <p>Everything you need to get crisp reads from your visual novel</p>
             </div>
             <div class="guide-grid">
@@ -144,21 +144,28 @@
                     </p>
                 </div>
                 <div class="guide-card">
+                    <h3>🧩 Recommended Extensions</h3>
+                    <p><strong>Important:</strong> This application does not provide built-in translations. For the best reading experience, install browser extensions such as 
+                        <strong>Google Translate</strong>, <strong>Yomitan</strong>, or your preferred text‑to‑speech tool.
+                    </p>
+                    <p>These extensions can instantly translate or read aloud the extracted text, making the OCR output much easier to follow.</p>
+                </div>
+                <div class="guide-card">
                     <h3>🔮 Image Processing Modes</h3>
                     <p>These modes control how the image is prepared for the OCR engine (they are NOT the OCR models):
                     </p>
                     <ul>
                         <li><strong>Adaptive:</strong> Best all-rounder. Converts to black/white automatically. Start
                             here.</li>
-                        <li><strong>Multi-Pass 🔥:</strong> Runs 5 different preprocessing combos and picks the winner
+                        <li><strong>Multi-Pass:</strong> Runs 5 different preprocessing combos and picks the winner
                             by confidence + Japanese character density. Slower but smarter.</li>
-                        <li><strong>Last Resort 🚨:</strong> Nuclear option — 7 passes. Isolates the textbox,
+                        <li><strong>Last Resort:</strong> Nuclear option — 7 passes. Isolates the textbox,
                             reconstructs character strokes, then tries every upscale &amp; binarize combination. Use
                             when nothing else works.</li>
-                        <li><strong>Contrast ⬛:</strong> Hard black/white. Best for flat, clean backgrounds.</li>
-                        <li><strong>Grayscale 🔲:</strong> Preserves tonal detail. Good for colorful or gradient
+                        <li><strong>Contrast:</strong> Hard black/white. Best for flat, clean backgrounds.</li>
+                        <li><strong>Grayscale:</strong> Preserves tonal detail. Good for colorful or gradient
                             backgrounds.</li>
-                        <li><strong>Raw 📷:</strong> No processing. Use to test or for very clean high-res text.</li>
+                        <li><strong>Raw:</strong> No processing. Use to test or for very clean high-res text.</li>
                     </ul>
                 </div>
                 <div class="guide-card">
@@ -228,13 +235,13 @@
         <button id="menu-auto" class="menu-item-btn" data-action="auto">Toggle Auto-Capture</button>
         <button id="menu-install" class="menu-item-btn" data-action="install">Install App</button>
         <button id="menu-history" class="menu-item-btn" data-action="history">Show/Hide History</button>
-        <button id="menu-guide" class="menu-item-btn" data-action="guide">Studio Guide</button>
+        <button id="menu-guide" class="menu-item-btn" data-action="guide">User Guide</button>
     </div>
     <div id="menu-backdrop" class="menu-backdrop"></div>
 
     <!-- Scripts at the end of body -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=1.0.0"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
