@@ -7,7 +7,7 @@
     <title>VN OCR — Master Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=1.0.0">
+    <link rel="stylesheet" href="styles.css?v=1.0.2">
     <link rel="manifest" href="manifest.json">
     <meta http-equiv="Content-Security-Policy"
         content="connect-src 'self' https://cdn.jsdelivr.net https://fastly.jsdelivr.net data:;">
@@ -154,20 +154,16 @@
                 </div>
                 <div class="guide-card">
                     <h3>🔮 Image Processing Modes</h3>
-                    <p>These modes control how the image is prepared for the OCR engine (they are NOT the OCR models):
-                    </p>
+                    <p>These modes prepare the image for the OCR engine. They are NOT the OCR models themselves:</p>
                     <ul>
-                        <li><strong>Adaptive:</strong> Best all-rounder. Converts to black/white automatically. Start
-                            here.</li>
-                        <li><strong>Multi-Pass:</strong> Runs 5 different preprocessing combos and picks the winner
-                            by confidence + Japanese character density. Slower but smarter.</li>
-                        <li><strong>Last Resort:</strong> Nuclear option — 7 passes. Isolates the textbox,
-                            reconstructs character strokes, then tries every upscale &amp; binarize combination. Use
-                            when nothing else works.</li>
+                        <li><strong>Default Mini:</strong> Balanced speed and accuracy. Smart thresholding with light denoise. Great for clean, modern VNs.</li>
+                        <li><strong>Default Full:</strong> Maximum fidelity. High-contrast normalization and strong sharpening. Best for classic or low-res VNs.</li>
+                        <li><strong>Adaptive:</strong> VN-Optimized. Uses local tile analysis to handle gradients and semi-transparent text boxes with extreme precision.</li>
+                        <li><strong>Multi-Pass:</strong> The Analyst. Runs 5 preprocessing combos and "votes" for the most Japanese-like result. Slower but very reliable.</li>
+                        <li><strong>Last Resort:</strong> The Nuclear Option. Performs advanced textbox isolation and stroke reconstruction. Use when all else fails.</li>
                         <li><strong>Contrast:</strong> Hard black/white. Best for flat, clean backgrounds.</li>
-                        <li><strong>Grayscale:</strong> Preserves tonal detail. Good for colorful or gradient
-                            backgrounds.</li>
-                        <li><strong>Raw:</strong> No processing. Use to test or for very clean high-res text.</li>
+                        <li><strong>Grayscale:</strong> Preserved tonal detail. Good for colorful or gradient backgrounds.</li>
+                        <li><strong>Raw:</strong> No digital preprocessing. Direct capture.</li>
                     </ul>
                 </div>
                 <div class="guide-card">
@@ -243,7 +239,7 @@
 
     <!-- Scripts at the end of body -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="app.js?v=1.0.0"></script>
+    <script src="app.js?v=1.0.2"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
