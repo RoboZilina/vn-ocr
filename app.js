@@ -446,53 +446,260 @@ async function captureFrame(rect) {
 function applyPreprocessing(canvas, mode) {
     if (mode === 'raw') return canvas;
     canvas = lr_upscale(canvas, 2);
+
+
+
     // Standard modes no longer upscale internally (PATCH 2)
     const res = document.createElement('canvas'); res.width = canvas.width; res.height = canvas.height;
     const ctx = res.getContext('2d'); ctx.drawImage(canvas, 0, 0);
     const id = ctx.getImageData(0, 0, res.width, res.height); const d = id.data;
+    let workingId = null;
     if (mode === 'binarize') {
-        for (let i = 0; i < d.length; i += 4) {
-            const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        canvas = invertCanvas(canvas);
+        canvas = sharpenCanvas(canvas);
+
+        ctx.drawImage(canvas, 0, 0);
+        const id2 = ctx.getImageData(0, 0, res.width, res.height);
+        const d2 = id2.data;
+
+        for (let i = 0; i < d2.length; i += 4) {
+            const v = 0.299 * d2[i] + 0.587 * d2[i + 1] + 0.114 * d2[i + 2];
             const contrasted = 128 + (v - 128) * 1.35;
-            const out = contrasted < 0 ? 0 : (contrasted > 255 ? 255 : contrasted);
-            d[i] = d[i + 1] = d[i + 2] = out;
+            const out = contrasted < 128 ? 0 : 255;
+            d2[i] = d2[i + 1] = d2[i + 2] = out;
         }
+
+        ctx.putImageData(id2, 0, 0);
+        canvas = medianFilter(canvas);
+        workingId = id2;
     } else if (mode === 'adaptive') {
+        canvas = invertCanvas(canvas);
+        canvas = sharpenCanvas(canvas);
+
+        ctx.drawImage(canvas, 0, 0);
+        const id2 = ctx.getImageData(0, 0, res.width, res.height);
+        const d2 = id2.data;
+
         const w = res.width, h = res.height;
         const integral = new Float64Array(w * h);
         const luma = new Float64Array(w * h);
+
         for (let y = 0; y < h; y++) {
             let rowSum = 0;
             for (let x = 0; x < w; x++) {
                 const i = (y * w + x) * 4;
-                const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                const v = 0.299 * d2[i] + 0.587 * d2[i + 1] + 0.114 * d2[i + 2];
                 luma[y * w + x] = v;
                 rowSum += v;
                 integral[y * w + x] = (y === 0 ? 0 : integral[(y - 1) * w + x]) + rowSum;
             }
         }
+
         const s = Math.floor(w / 8);
         const s2 = Math.floor(s / 2);
+
         for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
                 const x1 = Math.max(0, x - s2), x2 = Math.min(w - 1, x + s2);
                 const y1 = Math.max(0, y - s2), y2 = Math.min(h - 1, y + s2);
                 const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+
                 let sum = integral[y2 * w + x2];
                 if (x1 > 0) sum -= integral[y2 * w + x1 - 1];
                 if (y1 > 0) sum -= integral[(y1 - 1) * w + x2];
                 if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * w + x1 - 1];
+
                 const i = (y * w + x) * 4;
-                d[i] = d[i + 1] = d[i + 2] = (luma[y * w + x] * count < sum * 0.85) ? 0 : 255;
+                d2[i] = d2[i + 1] = d2[i + 2] = (luma[y * w + x] * count < sum * 0.85) ? 0 : 255;
             }
         }
+
+        ctx.putImageData(id2, 0, 0);
+        canvas = medianFilter(canvas);
+        workingId = id2;
     } else if (mode === 'grayscale') {
-        for (let i = 0; i < d.length; i += 4) {
-            const v = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        canvas = sharpenCanvas(canvas);
+
+        ctx.drawImage(canvas, 0, 0);
+        const id2 = ctx.getImageData(0, 0, res.width, res.height);
+        const d2 = id2.data;
+
+        for (let i = 0; i < d2.length; i += 4) {
+            const v = 0.299 * d2[i] + 0.587 * d2[i + 1] + 0.114 * d2[i + 2];
             const contrasted = 128 + (v - 128) * 1.15;
             const out = contrasted < 0 ? 0 : (contrasted > 255 ? 255 : contrasted);
-            d[i] = d[i + 1] = d[i + 2] = out;
+            d2[i] = d2[i + 1] = d2[i + 2] = out;
         }
+
+        ctx.putImageData(id2, 0, 0);
+        canvas = medianFilter(canvas);
+        workingId = id2;
+    } else if (mode === 'default_mini') {
+        // Light sharpening
+        canvas = sharpenCanvas(canvas);
+
+        // Light denoise
+        canvas = medianFilter(canvas);
+
+        // Refresh pixel data
+        ctx.drawImage(canvas, 0, 0);
+        const id2 = ctx.getImageData(0, 0, res.width, res.height);
+        const d2 = id2.data;
+
+        // Mild adaptive threshold
+        const w = res.width, h = res.height;
+        const integral = new Float64Array(w * h);
+        const luma = new Float64Array(w * h);
+
+        for (let y = 0; y < h; y++) {
+            let rowSum = 0;
+            for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4;
+                const v = 0.299 * d2[i] + 0.587 * d2[i + 1] + 0.114 * d2[i + 2];
+                luma[y * w + x] = v;
+                rowSum += v;
+                integral[y * w + x] = (y === 0 ? 0 : integral[(y - 1) * w + x]) + rowSum;
+            }
+        }
+
+        const s = Math.floor(w / 10);
+        const s2 = Math.floor(s / 2);
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const x1 = Math.max(0, x - s2), x2 = Math.min(w - 1, x + s2);
+                const y1 = Math.max(0, y - s2), y2 = Math.min(h - 1, y + s2);
+                const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+
+                let sum = integral[y2 * w + x2];
+                if (x1 > 0) sum -= integral[y2 * w + x1 - 1];
+                if (y1 > 0) sum -= integral[(y1 - 1) * w + x2];
+                if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * w + x1 - 1];
+
+                const i = (y * w + x) * 4;
+                d2[i] = d2[i + 1] = d2[i + 2] =
+                    (luma[y * w + x] * count < sum * 0.90) ? 0 : 255;
+            }
+        }
+
+        ctx.putImageData(id2, 0, 0);
+        workingId = id2;
+    } else if (mode === 'default_full') {
+        // Normalize polarity
+        canvas = invertCanvas(canvas);
+
+        // Strong sharpening
+        canvas = sharpenCanvas(canvas);
+
+        // Strong denoise
+        canvas = medianFilter(canvas);
+
+        // Refresh pixel data
+        ctx.drawImage(canvas, 0, 0);
+        const id2 = ctx.getImageData(0, 0, res.width, res.height);
+        const d2 = id2.data;
+
+        // Strong adaptive threshold
+        const w = res.width, h = res.height;
+        const integral = new Float64Array(w * h);
+        const luma = new Float64Array(w * h);
+
+        for (let y = 0; y < h; y++) {
+            let rowSum = 0;
+            for (let x = 0; x < w; x++) {
+                const i = (y * w + x) * 4;
+                const v = 0.299 * d2[i] + 0.587 * d2[i + 1] + 0.114 * d2[i + 2];
+                luma[y * w + x] = v;
+                rowSum += v;
+                integral[y * w + x] = (y === 0 ? 0 : integral[(y - 1) * w + x]) + rowSum;
+            }
+        }
+
+        const s = Math.floor(w / 8);
+        const s2 = Math.floor(s / 2);
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const x1 = Math.max(0, x - s2), x2 = Math.min(w - 1, x + s2);
+                const y1 = Math.max(0, y - s2), y2 = Math.min(h - 1, y + s2);
+                const count = (x2 - x1 + 1) * (y2 - y1 + 1);
+
+                let sum = integral[y2 * w + x2];
+                if (x1 > 0) sum -= integral[y2 * w + x1 - 1];
+                if (y1 > 0) sum -= integral[(y1 - 1) * w + x2];
+                if (x1 > 0 && y1 > 0) sum += integral[(y1 - 1) * w + x1 - 1];
+
+                const i = (y * w + x) * 4;
+                d2[i] = d2[i + 1] = d2[i + 2] =
+                    (luma[y * w + x] * count < sum * 0.80) ? 0 : 255;
+            }
+        }
+
+        ctx.putImageData(id2, 0, 0);
+        workingId = id2;
+    }
+
+    // === UNIFIED CLEANUP STEP ===
+    if (workingId) {
+        const w = res.width, h = res.height;
+        const d2 = workingId.data;
+        let brightRegions = 0, darkRegions = 0;
+        const marginW = Math.floor(w * 0.05), marginH = Math.floor(h * 0.05);
+        const sampleW = Math.floor((w - 2 * marginW) / 3), sampleH = Math.floor((h - 2 * marginH) / 3);
+
+        // 1. Stroke-Aware Local Polarity Detection (3x3 Grid)
+        for (let gy = 0; gy < 3; gy++) {
+            for (let gx = 0; gx < 3; gx++) {
+                let brightEdges = 0, darkEdges = 0, minL = 255, maxL = 0;
+                const rX = marginW + gx * sampleW, rY = marginH + gy * sampleH;
+                for (let y = rY; y < rY + sampleH && y < h - 1; y++) {
+                    for (let x = rX; x < rX + sampleW && x < w - 1; x++) {
+                        const i = (y * w + x) * 4;
+                        const l = (d2[i] + d2[i + 1] + d2[i + 2]) / 3;
+                        if (l < minL) minL = l; if (l > maxL) maxL = l;
+                        const rL = (d2[i + 4] + d2[i + 5] + d2[i + 6]) / 3;
+                        const bL = (d2[i + w * 4] + d2[i + w * 4 + 1] + d2[i + w * 4 + 2]) / 3;
+                        if (l > rL + 20) brightEdges++; else if (l < rL - 20) darkEdges++;
+                        if (l > bL + 20) brightEdges++; else if (l < bL - 20) darkEdges++;
+                    }
+                }
+                if (maxL - minL > 25) {
+                    if (brightEdges > darkEdges) brightRegions++;
+                    else if (darkEdges > brightEdges) darkRegions++;
+                }
+            }
+        }
+        const textIsBright = brightRegions > darkRegions;
+
+        // 2. Main Processing Pass (Polarity, Threshold, Flattening)
+        for (let i = 0; i < d2.length; i += 4) {
+            let l = (d2[i] + d2[i + 1] + d2[i + 2]) / 3;
+            if (textIsBright) l = 255 - l;
+            if (l < 55) l = 0;
+            else if (l > 200) l = 255;
+            else l = (l < 128) ? 0 : 255;
+            d2[i] = d2[i + 1] = d2[i + 2] = l;
+        }
+
+        // 3. Spatial Cleanup (Halo Removal)
+        const ref = new Uint8Array(d2);
+        for (let y = 1; y < h - 1; y++) {
+            for (let x = 1; x < w - 1; x++) {
+                const i = (y * w + x) * 4;
+                const center = ref[i];
+                let sameCount = 0;
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        if (ref[((y + ky) * w + (x + kx)) * 4] === center) sameCount++;
+                    }
+                }
+                if (sameCount < 3) {
+                    const flipped = 255 - center;
+                    d2[i] = d2[i + 1] = d2[i + 2] = flipped;
+                }
+            }
+        }
+        id.data.set(d2);
     }
     ctx.putImageData(id, 0, 0);
     return res;
@@ -604,6 +811,71 @@ function lr_sharpen(canvas) {
     const output = ctx.createImageData(w, h); const od = output.data; const weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
     for (let y = 1; y < h - 1; y++) { for (let x = 1; x < w - 1; x++) { for (let c = 0; c < 3; c++) { let sum = 0; for (let ky = -1; ky <= 1; ky++) { for (let kx = -1; kx <= 1; kx++) { sum += d[((y + ky) * w + (x + kx)) * 4 + c] * weights[(ky + 1) * 3 + (kx + 1)]; } } od[(y * w + x) * 4 + c] = Math.min(255, Math.max(0, sum)); } od[(y * w + x) * 4 + 3] = 255; } }
     const res = document.createElement('canvas'); res.width = w; res.height = h; res.getContext('2d').putImageData(output, 0, 0); return res;
+}
+
+function medianFilter(canvas) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const id = ctx.getImageData(0, 0, w, h);
+    const d = id.data;
+    const output = ctx.createImageData(w, h);
+    const od = output.data;
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            for (let c = 0; c < 3; c++) {
+                const vals = [];
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        vals.push(d[((y + ky) * w + (x + kx)) * 4 + c]);
+                    }
+                }
+                vals.sort((a, b) => a - b);
+                od[(y * w + x) * 4 + c] = vals[4];
+            }
+            od[(y * w + x) * 4 + 3] = 255;
+        }
+    }
+    ctx.putImageData(output, 0, 0);
+    return canvas;
+}
+
+function invertCanvas(canvas) {
+    const ctx = canvas.getContext('2d');
+    const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+        d[i] = 255 - d[i];
+        d[i + 1] = 255 - d[i + 1];
+        d[i + 2] = 255 - d[i + 2];
+    }
+    ctx.putImageData(id, 0, 0);
+    return canvas;
+}
+
+function sharpenCanvas(canvas) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const id = ctx.getImageData(0, 0, w, h);
+    const d = id.data;
+    const output = ctx.createImageData(w, h);
+    const od = output.data;
+    const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            for (let c = 0; c < 3; c++) {
+                let sum = 0;
+                for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                        sum += d[((y + ky) * w + (x + kx)) * 4 + c] * kernel[(ky + 1) * 3 + (kx + 1)];
+                    }
+                }
+                od[(y * w + x) * 4 + c] = Math.min(255, Math.max(0, sum));
+            }
+            od[(y * w + x) * 4 + 3] = 255;
+        }
+    }
+    ctx.putImageData(output, 0, 0);
+    return canvas;
 }
 
 // Pipelines
